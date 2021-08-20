@@ -56,6 +56,5 @@ dockers:
     image_templates:
       - "justcompile/tnl:latest"
       - "justcompile/tnl:{{ .Tag }}"
-      - "justcompile/tnl:{{ .Tag }}-{{ .Env.GO_VERSION }}"
       - "justcompile/tnl:v{{ .Major }}"
     dockerfile: Dockerfile.release
