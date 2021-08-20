@@ -1,17 +1,13 @@
 package proxy
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
-	"github.com/justcompile/tnl/pkg/data"
 	"github.com/justcompile/tnl/pkg/socketserver"
 	"github.com/justcompile/tnl/pkg/types"
 	log "github.com/sirupsen/logrus"
 )
-
-var store data.Store
 
 type Handler struct {
 	Hub *socketserver.Hub
@@ -53,16 +49,4 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 func serverError(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusBadGateway)
 	_, _ = w.Write([]byte(err.Error()))
-}
-
-func init() {
-	s, err := data.NewRedisStore()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	store = s
-
-	log.Debugln("seeding database")
-	_ = store.Save(context.TODO(), "foobar.com", "http://localhost:3333")
 }
