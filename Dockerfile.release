@@ -1,0 +1,3 @@
+FROM scratch
+ENTRYPOINT ["/tnl-server"]
+COPY tnl-server /

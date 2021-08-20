@@ -2,7 +2,8 @@ before:
   hooks:
     - go mod tidy
 builds:
-  - main: ./cmd/cli
+  - id: cli
+    main: ./cmd/cli
     binary:
       tnl
     env:
@@ -11,6 +12,15 @@ builds:
       - linux
       - windows
       - darwin
+  - id: server
+    main: ./cmd/server
+    binary:
+      tnl-server
+    env: CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
 archives:
   - replacements:
       darwin: Darwin
@@ -28,3 +38,15 @@ changelog:
     exclude:
       - '^docs:'
       - '^test:'
+dockers:
+  - id: server
+    goos: linux
+    goarch: amd64
+    ids:
+      - server
+    image_templates:
+      - "justcompile/tnl:latest"
+      - "justcompile/tnl:{{ .Tag }}"
+      - "justcompile/tnl:{{ .Tag }}-{{ .Env.GO_VERSION }}"
+      - "justcompile/tnl:v{{ .Major }}"
+    dockerfile: Dockerfile.release
