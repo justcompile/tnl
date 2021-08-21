@@ -3,9 +3,10 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"os/signal"
 
 	"github.com/justcompile/tnl/pkg/socketclient"
+	"github.com/justcompile/tnl/pkg/ui"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -16,16 +17,38 @@ var (
 	rootCmd = &cobra.Command{
 		Use: "run",
 		Run: func(cmd *cobra.Command, args []string) {
-			interrupt := make(chan os.Signal, 1)
-			signal.Notify(interrupt, os.Interrupt)
+			opts := &socketclient.Options{}
 
-			addr, _ := cmd.Flags().GetString("address")
-			client := socketclient.New(addr)
+			opts.WebsocketServerBindAddress, _ = cmd.Flags().GetString("websocket-address")
+			opts.LocalBindAddress, _ = cmd.Flags().GetString("port")
+
+			opts.Protocol = "https"
+
+			if useSSL, _ := cmd.Flags().GetBool("use-ssl"); !useSSL {
+				opts.Protocol = "http"
+			}
+
+			client := socketclient.New(opts)
 
 			defer client.Close()
 
-			client.Connect()
-			<-interrupt
+			window, err := ui.ConstructUI("0:" + opts.LocalBindAddress)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			log.Infoln("connecting...")
+
+			client.Connect(
+				window.GetComponent(ui.ComponentIDInfo).GetUpdateChannel(),
+				window.GetComponent(ui.ComponentIDRequests).GetUpdateChannel(),
+			)
+
+			log.Infoln("running...")
+
+			if runErr := window.Run(); runErr != nil {
+				log.Fatal(runErr)
+			}
 		},
 	}
 )
@@ -37,7 +60,9 @@ func Execute() error {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.Flags().StringP("address", "a", ":8081", "Address to expose")
+	rootCmd.Flags().StringP("port", "p", "3333", "local port to forward traffic onto")
+	rootCmd.Flags().StringP("websocket-address", "w", "tnl.justcompile.io:8081", "Address of Websocket Server")
+	rootCmd.Flags().BoolP("use-ssl", "s", true, "remote domain operates over ssl")
 }
 
 func initConfig() {
