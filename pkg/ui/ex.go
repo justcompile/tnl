@@ -1,9 +1,7 @@
 package ui
 
 import (
-	"context"
 	"fmt"
-	"time"
 
 	"github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
@@ -37,37 +35,9 @@ func ConstructUI(listenAddress string) (*Window, error) {
 
 	requestUpdates := make(chan interface{})
 	table1.UpdateOn(requestUpdates)
-	// go pollRequests(requestUpdates)
 
 	infoUpdates := make(chan interface{})
 	banner.UpdateOn(infoUpdates)
-	// go pollInfo(infoUpdates)
 
 	return window, nil
-}
-
-func pollInfo(updateChan chan interface{}) {
-	time.AfterFunc(time.Second, func() {
-		updateChan <- &BannerText{
-			Endpoint: "https://meh.tnl.justcompile.io",
-			Port:     ":3000",
-		}
-	})
-}
-
-func pollRequests(updateChan chan interface{}) {
-	t := time.NewTicker(time.Second * 2)
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*10))
-	defer cancel()
-	i := 3
-	for {
-		select {
-		case v := <-t.C:
-			updateChan <- []string{fmt.Sprintf("%d) col", i), "col2", v.String()}
-			i++
-		case <-ctx.Done():
-			t.Stop()
-			return
-		}
-	}
 }

@@ -3,6 +3,7 @@ package ui
 import (
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/gizak/termui/v3"
 )
@@ -48,7 +49,7 @@ func (w *Window) Run() error {
 	}
 
 	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt, os.Kill)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 
 	uiEvents := termui.PollEvents()
 	for {

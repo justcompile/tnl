@@ -116,7 +116,7 @@ func (c *Client) makeRequest(requestChan chan interface{}, in []byte) ([]byte, e
 	}
 
 	resp, err := http.DefaultClient.Do(req)
-	requestDur := time.Now().Sub(start)
+	requestDur := time.Since(start)
 	if err != nil {
 		requestChan <- []string{
 			r.URL, fmt.Sprintf("[%s](fg:red)", err.Error()), requestDur.String(),
