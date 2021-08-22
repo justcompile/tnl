@@ -6,16 +6,22 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/justcompile/tnl/pkg/socketserver"
 	"github.com/justcompile/tnl/pkg/types"
+	"github.com/justcompile/tnl/pkg/ui"
+	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 )
 
 type Client struct {
-	conn          *websocket.Conn
-	serverAddress string
+	conn            *websocket.Conn
+	localBinding    string
+	remoteProtocol  string
+	wsServerAddress string
 }
 
 func (c *Client) Close() error {
@@ -28,14 +34,22 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-func (c *Client) Connect() {
-	u := url.URL{Scheme: "ws", Host: c.serverAddress, Path: socketserver.WebSocketPath}
-	log.Printf("connecting to %s", u.String())
+func (c *Client) Connect(infoUpdates, requestUpdates chan interface{}) {
+	u := url.URL{Scheme: "ws", Host: c.wsServerAddress, Path: socketserver.WebSocketPath}
+
+	domain := c.generateSubdomain()
 
 	var err error
 
 	headers := http.Header{}
-	headers.Add(socketserver.DomainHeader, "foobar.com")
+	headers.Add(socketserver.DomainHeader, domain)
+
+	go func() {
+		infoUpdates <- &ui.BannerText{
+			Endpoint: fmt.Sprintf("%s://%s", c.remoteProtocol, domain),
+			Port:     c.localBinding,
+		}
+	}()
 
 	c.conn, _, err = websocket.DefaultDialer.Dial(u.String(), headers)
 	if err != nil {
@@ -53,11 +67,7 @@ func (c *Client) Connect() {
 				return
 			}
 
-			log.Println(".")
-
-			// log.Printf("recv: %s", message)
-
-			resp, err := makeRequest(message)
+			resp, err := c.makeRequest(requestUpdates, message)
 			if err != nil {
 				log.Println("req:", err)
 				return
@@ -68,47 +78,26 @@ func (c *Client) Connect() {
 			}
 		}
 	}()
-	//
-	// ticker := time.NewTicker(time.Second)
-	// defer ticker.Stop()
-	//
-	// for {
-	// 	select {
-	// 	case <-done:
-	// 		return
-	// 	case t := <-ticker.C:
-	// 		err := c.WriteMessage(websocket.TextMessage, []byte(t.String()))
-	// 		if err != nil {
-	// 			log.Println("write:", err)
-	// 			return
-	// 		}
-	// 	case <-interrupt:
-	// 		log.Println("interrupt")
-	//
-	// 		// Cleanly close the connection by sending a close message and then
-	// 		// waiting (with timeout) for the server to close the connection.
-	// 		err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-	// 		if err != nil {
-	// 			log.Println("write close:", err)
-	// 			return
-	// 		}
-	// 		select {
-	// 		case <-done:
-	// 		case <-time.After(time.Second):
-	// 		}
-	// 		return
-	// 	}
-	// }
 }
 
-func makeRequest(in []byte) ([]byte, error) {
+func (c *Client) generateSubdomain() string {
+	sub := uuid.NewV4().String()
+
+	baseDomain := strings.Split(c.wsServerAddress, ":")[0]
+
+	return sub + "." + baseDomain
+}
+
+func (c *Client) makeRequest(requestChan chan interface{}, in []byte) ([]byte, error) {
 	var r *types.Request
 
 	if err := json.Unmarshal(in, &r); err != nil {
 		return nil, err
 	}
 
-	forwardURL := fmt.Sprintf("http://localhost:3333%s", r.URL)
+	start := time.Now()
+
+	forwardURL := fmt.Sprintf("http://localhost:%s%s", c.localBinding, r.URL)
 
 	var req *http.Request
 	if len(r.Body) > 0 {
@@ -122,15 +111,35 @@ func makeRequest(in []byte) ([]byte, error) {
 	}
 
 	resp, err := http.DefaultClient.Do(req)
+	requestDur := time.Since(start)
 	if err != nil {
+		requestChan <- []string{
+			r.URL, fmt.Sprintf("[%s](fg:red)", err.Error()), requestDur.String(),
+		}
+
 		return nil, err
+	}
+
+	var colour string
+	if resp.StatusCode < 400 {
+		colour = "green"
+	} else if resp.StatusCode < 500 {
+		colour = "yellow"
+	} else {
+		colour = "red"
+	}
+
+	requestChan <- []string{
+		r.URL, fmt.Sprintf("[%d](fg:%s)", resp.StatusCode, colour), requestDur.String(),
 	}
 
 	return types.SerializeResponse(resp)
 }
 
-func New(addr string) *Client {
+func New(opts *Options) *Client {
 	return &Client{
-		serverAddress: addr,
+		localBinding:    opts.LocalBindAddress,
+		remoteProtocol:  opts.Protocol,
+		wsServerAddress: opts.WebsocketServerBindAddress,
 	}
 }
