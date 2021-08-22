@@ -36,7 +36,6 @@ func (c *Client) Close() error {
 
 func (c *Client) Connect(infoUpdates, requestUpdates chan interface{}) {
 	u := url.URL{Scheme: "ws", Host: c.wsServerAddress, Path: socketserver.WebSocketPath}
-	// log.Infoln("Connecting to", u.String())
 
 	domain := c.generateSubdomain()
 
@@ -52,14 +51,10 @@ func (c *Client) Connect(infoUpdates, requestUpdates chan interface{}) {
 		}
 	}()
 
-	// websocket.DefaultDialer.HandshakeTimeout = time.Second * 5
-
 	c.conn, _, err = websocket.DefaultDialer.Dial(u.String(), headers)
 	if err != nil {
 		log.Fatal("dial:", err)
 	}
-
-	// log.Infoln("Connected")
 
 	done := make(chan struct{})
 

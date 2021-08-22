@@ -37,14 +37,10 @@ var (
 				log.Fatal(err)
 			}
 
-			log.Infoln("connecting...")
-
 			client.Connect(
 				window.GetComponent(ui.ComponentIDInfo).GetUpdateChannel(),
 				window.GetComponent(ui.ComponentIDRequests).GetUpdateChannel(),
 			)
-
-			log.Infoln("running...")
 
 			if runErr := window.Run(); runErr != nil {
 				log.Fatal(runErr)
