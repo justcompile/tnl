@@ -22,7 +22,7 @@ func (w *Window) GetComponent(id string) Component {
 	return nil
 }
 
-func (w *Window) close() {
+func (w *Window) Close() {
 	for _, c := range w.components {
 		c.Close()
 	}
@@ -38,8 +38,6 @@ func (w *Window) resize() {
 }
 
 func (w *Window) Run() error {
-	defer w.close()
-
 	for _, c := range w.components {
 		go c.run()
 	}

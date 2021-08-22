@@ -35,7 +35,7 @@ func (c *Client) Close() error {
 }
 
 func (c *Client) Connect(infoUpdates, requestUpdates chan interface{}) {
-	u := url.URL{Scheme: "ws", Host: c.wsServerAddress, Path: socketserver.WebSocketPath}
+	u := c.getWebsocketURL()
 
 	domain := c.generateSubdomain()
 
@@ -86,6 +86,17 @@ func (c *Client) generateSubdomain() string {
 	baseDomain := strings.Split(c.wsServerAddress, ":")[0]
 
 	return sub + "." + baseDomain
+}
+
+func (c *Client) getWebsocketURL() *url.URL {
+	u := url.URL{Scheme: "ws", Host: c.wsServerAddress, Path: socketserver.WebSocketPath}
+	if c.remoteProtocol == "https" {
+		u.Scheme += "s"
+	} else {
+		u.Host = "localhost:8081"
+	}
+
+	return &u
 }
 
 func (c *Client) makeRequest(requestChan chan interface{}, in []byte) ([]byte, error) {
