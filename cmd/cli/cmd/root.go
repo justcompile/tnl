@@ -19,7 +19,7 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			opts := &socketclient.Options{}
 
-			opts.WebsocketServerBindAddress, _ = cmd.Flags().GetString("websocket-address")
+			opts.WebsocketServerBindAddress = "tnl.justcompile.io"
 			opts.LocalBindAddress, _ = cmd.Flags().GetString("port")
 
 			opts.Protocol = "https"
@@ -36,6 +36,8 @@ var (
 			if err != nil {
 				log.Fatal(err)
 			}
+
+			defer window.Close()
 
 			client.Connect(
 				window.GetComponent(ui.ComponentIDInfo).GetUpdateChannel(),
@@ -57,7 +59,6 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.Flags().StringP("port", "p", "3333", "local port to forward traffic onto")
-	rootCmd.Flags().StringP("websocket-address", "w", "tnl.justcompile.io:8081", "Address of Websocket Server")
 	rootCmd.Flags().BoolP("use-ssl", "s", true, "remote domain operates over ssl")
 }
 
